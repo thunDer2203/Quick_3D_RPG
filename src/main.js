@@ -45,7 +45,6 @@ void main() {
 }`;
 
 
-
 class HackNSlashDemo {
   constructor() {
     this._Initialize();
@@ -77,13 +76,13 @@ class HackNSlashDemo {
     this._camera.position.set(25, 10, 25);
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0xFFFFFF);
-    this._scene.fog = new THREE.FogExp2(0x89b2eb, 0.002);
+    this._scene.background = new THREE.Color(0xF5A927);
+    this._scene.fog = new THREE.FogExp2(0xF5A927);
 
-    let light = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+    let light = new THREE.DirectionalLight(0xE66000, 2.0);
     light.position.set(-10, 500, 10);
     light.target.position.set(0, 0, 0);
-    light.castShadow = true;
+    // light.castShadow = true;
     light.shadow.bias = -0.001;
     light.shadow.mapSize.width = 4096;
     light.shadow.mapSize.height = 4096;
@@ -128,9 +127,9 @@ class HackNSlashDemo {
   }
 
   _LoadSky() {
-    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFFF, 0.6);
+    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 0.6);
     hemiLight.color.setHSL(0.6, 1, 0.6);
-    hemiLight.groundColor.setHSL(0.095, 1, 0.75);
+    hemiLight.groundColor.setHSL(0.01, 0, 0.5);
     this._scene.add(hemiLight);
 
     const uniforms = {
@@ -155,28 +154,31 @@ class HackNSlashDemo {
     this._scene.add(sky);
   }
 
-  _LoadClouds() {
-    for (let i = 0; i < 20; ++i) {
-      const index = math.rand_int(1, 3);
+  
+ _LoadClouds() {
+  for (let i = 0; i < 20; ++i) {
+    const index = math.rand_int(1, 3);
     const pos = new THREE.Vector3(
-        (Math.random() * 2.0 - 1.0) * 500,
-        100,
-        (Math.random() * 2.0 - 1.0) * 500);
+      (Math.random() * 2.0 - 1.0) * 500,
+      80 + Math.random() * 40,
+      (Math.random() * 2.0 - 1.0) * 500
+    );
 
-      const e = new entity.Entity();
-      e.AddComponent(new gltf_component.StaticModelComponent({
-        scene: this._scene,
-        resourcePath: './resources/nature2/GLTF/',
-        resourceName: 'Cloud' + index + '.glb',
-        position: pos,
-        scale: Math.random() * 5 + 10,
-        emissive: new THREE.Color(0x808080),
-      }));
-      e.SetPosition(pos);
-      this._entityManager.Add(e);
-      e.SetActive(false);
-    }
+    const e = new entity.Entity();
+    e.AddComponent(new gltf_component.StaticModelComponent({
+      scene: this._scene,
+      resourcePath: './resources/nature2/GLTF/',
+      resourceName: 'Cloud' + index + '.glb',
+      position: pos,
+      scale: Math.random() * 10 + 5,
+      rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0),
+      emissive: new THREE.Color(0xFFFFFF)
+    }));
+
+    e.SetPosition(pos);
+    this._entityManager.Add(e);
   }
+}
 
   _LoadFoliage() {
     for (let i = 0; i < 100; ++i) {
@@ -232,7 +234,7 @@ class HackNSlashDemo {
         damage: 3,
         renderParams: {
           name: 'Axe',
-          scale: 0.25,
+          scale: 0.5,
           icon: 'war-axe-64.png',
         },
     }));
@@ -244,7 +246,7 @@ class HackNSlashDemo {
         damage: 3,
         renderParams: {
           name: 'Sword',
-          scale: 0.25,
+          scale: 0.5,
           icon: 'pointy-sword-64.png',
         },
     }));
@@ -276,14 +278,14 @@ class HackNSlashDemo {
     player.AddComponent(new inventory_controller.InventoryController(params));
     player.AddComponent(new health_component.HealthComponent({
         updateUI: true,
-        health: 100,
-        maxHealth: 100,
+        health: 500,
+        maxHealth: 500,
         strength: 50,
-        wisdomness: 5,
+        wisdomness: 50,
         benchpress: 20,
         curl: 100,
         experience: 0,
-        level: 1,
+        level: 100,
     }));
     player.AddComponent(
         new spatial_grid_controller.SpatialGridController({grid: this._grid}));
