@@ -159,28 +159,29 @@ audioLoader.load('./resources/sounds/retro_ringtone.mp3',
 );
     this._scene = new THREE.Scene();
     // warmer fog and blend with ground
-    this._scene.background = new THREE.Color(0xCDE8FF);
-    this._scene.fog = new THREE.FogExp2(0xC9EACD, 0.0011);
+    this._scene.background = new THREE.Color(0x87CEEB);
+    this._scene.fog = new THREE.FogExp2(0x87CEEB, 0.0011);
 
     // --- lighting: warm sun + hemisphere ambient ---
-    let light = new THREE.DirectionalLight(0xfff1d6, 0.95);
-    light.position.set(-40, 120, 60);
+   let light = new THREE.DirectionalLight(0xFFFFFF, 1.0);
+    light.position.set(-10, 500, 10);
     light.target.position.set(0, 0, 0);
     light.castShadow = true;
-    light.shadow.bias = -0.0004;
-    light.shadow.mapSize.width = 2048;
-    light.shadow.mapSize.height = 2048;
+    light.shadow.bias = -0.001;
+    light.shadow.mapSize.width = 4096;
+    light.shadow.mapSize.height = 4096;
     light.shadow.camera.near = 0.1;
     light.shadow.camera.far = 1000.0;
-    light.shadow.camera.left = 200;
-    light.shadow.camera.right = -200;
-    light.shadow.camera.top = 200;
-    light.shadow.camera.bottom = -200;
+    light.shadow.camera.left = 100;
+    light.shadow.camera.right = -100;
+    light.shadow.camera.top = 100;
+    light.shadow.camera.bottom = -100;
     this._scene.add(light);
+
     this._sun = light;
 
-    const hemi = new THREE.HemisphereLight(0xfff6e0, 0x445566, 0.45);
-    this._scene.add(hemi);
+    // const hemi = new THREE.HemisphereLight(0xfff6e0, 0x445566, 0.45);
+    // this._scene.add(hemi);
 
     // --- Ground: try to use tiled texture, fallback to color ---
     const planeGeo = new THREE.PlaneGeometry(5000, 5000, 10, 10);
@@ -585,12 +586,12 @@ _addMoon() {
       }
       this._removeMoon();
     } else if (mode === 'night') {
-      this._scene.background = new THREE.Color(0x0a0a23); // Dark blue
-      this._scene.fog.color.set(0x0a0a23);
-      this._sun.intensity = 0.15;
-      this._sun.color.set(0xaaaaff);
+      this._scene.background = new THREE.Color(0x090040); // Dark blue
+      this._scene.fog.color.set(0x090040);
+      this._sun.intensity = 0.05;
+      this._sun.color.set(0x090040);
       if (this._skyUniforms) {
-        this._skyUniforms.topColor.value.set(0x0a0a23);
+        this._skyUniforms.topColor.value.set(0x090040);
         this._skyUniforms.bottomColor.value.set(0x222244);
       }
       this._addMoon();
