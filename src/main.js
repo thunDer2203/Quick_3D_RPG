@@ -103,7 +103,17 @@ void main() {
 class HackNSlashDemo {
   constructor() {
     this._Initialize();
+
+    document.getElementById('btn-morning').addEventListener('click', () => {
+      this.setEnvironmentMode('morning');
+    });
+    document.getElementById('btn-night').addEventListener('click', () => {
+      this.setEnvironmentMode('night');
+    });
   }
+
+    
+
 
   _Initialize() {
     this._threejs = new THREE.WebGLRenderer({
@@ -494,82 +504,6 @@ audioLoader.load('./resources/sounds/retro_ringtone.mp3',
     }
   }
 
-  // ----- REPLACED: thin shader-driven grass (item 2) -----
-  _LoadGrass() {
-    // simple shader-based thin grass (many individual meshes)
-    const grassMaterial = new THREE.ShaderMaterial({
-      uniforms: { time: { value: 0 } },
-      vertexShader: grassVertex,
-      fragmentShader: grassFragment,
-      side: THREE.DoubleSide,
-      transparent: true,
-      depthWrite: false,
-    });
-
-    // SUPER THIN + SHORT GRASS
-    // width = 0.3 (very thin), height = 3 (short)
-    const grassGeometry = new THREE.PlaneGeometry(0.3, 3);
-    grassGeometry.translate(0, 1.5, 0); // bottom touches ground
-
-    const COUNT = 12000; // dense grass field
-    for (let i = 0; i < COUNT; ++i) {
-      const pos = new THREE.Vector3(
-        (Math.random() * 2 - 1) * 500,
-        0.001,
-        (Math.random() * 2 - 1) * 500
-      );
-
-      const grass = new THREE.Mesh(grassGeometry, grassMaterial);
-      grass.position.copy(pos);
-
-      // random orientation so it looks natural
-      grass.rotation.y = Math.random() * Math.PI * 2;
-
-      // tiny random variation
-      const scale = 0.8 + Math.random() * 0.4;
-      grass.scale.set(scale, scale, scale);
-
-      // small random tilt so blades aren't perfectly vertical
-      grass.rotation.z = (Math.random() - 0.5) * 0.12;
-      grass.rotation.x = (Math.random() - 0.5) * 0.08;
-
-      this._scene.add(grass);
-    }
-
-    this._grassMaterial = grassMaterial;
-  }
-
-  // (kept for compatibility — not called now)
-  _UpdateGrass(dt) {
-    if (!this._grassMeshes || !this._grassOffsets) return;
-    const meshes = this._grassMeshes; // array of three instanced meshes
-    const dummy = this._grassDummy;
-    const count = this._grassOffsets.length;
-    for (let i = 0; i < count; i++) {
-      meshes[0].getMatrixAt(i, dummy.matrix);
-      dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
-
-      const off = this._grassOffsets[i];
-      const sway = Math.sin(this._totalTime * off.speed + off.phase) * off.amplitude * 1.1;
-
-      const origY = dummy.rotation ? dummy.rotation.y : 0;
-      dummy.rotation.set(sway, origY, sway * 0.25);
-      dummy.updateMatrix();
-      meshes[0].setMatrixAt(i, dummy.matrix);
-
-      dummy.rotation.set(sway, origY + Math.PI * 2 / 3, sway * 0.25);
-      dummy.updateMatrix();
-      meshes[1].setMatrixAt(i, dummy.matrix);
-
-      dummy.rotation.set(sway, origY - Math.PI * 2 / 3, sway * 0.25);
-      dummy.updateMatrix();
-      meshes[2].setMatrixAt(i, dummy.matrix);
-    }
-
-    for (const m of meshes) {
-      if (m.instanceMatrix) m.instanceMatrix.needsUpdate = true;
-    }
-  }
 
   _OnWindowResize() {
     this._camera.aspect = window.innerWidth / window.innerHeight;
@@ -620,8 +554,50 @@ audioLoader.load('./resources/sounds/retro_ringtone.mp3',
 
     this._entityManager.Update(timeElapsedS);
   }
-}
 
+
+_addMoon() {
+    if (this._moonMesh) return;
+    const geometry = new THREE.SphereGeometry(20, 32, 32);
+    const material = new THREE.MeshBasicMaterial({ color: 0xfafaff });
+    const moon = new THREE.Mesh(geometry, material);
+    moon.position.set(0, 400, -600);
+    this._scene.add(moon);
+    this._moonMesh = moon;
+  }
+
+  _removeMoon() {
+    if (this._moonMesh) {
+      this._scene.remove(this._moonMesh);
+      this._moonMesh = null;
+    }
+  }
+
+  setEnvironmentMode(mode) {
+    if (mode === 'morning') {
+      this._scene.background = new THREE.Color(0x87ceeb); // Sky blue
+      this._scene.fog.color.set(0x87ceeb);
+      this._sun.intensity = 1.2;
+      this._sun.color.set(0xffffff);
+      if (this._skyUniforms) {
+        this._skyUniforms.topColor.value.set(0x87ceeb);
+        this._skyUniforms.bottomColor.value.set(0xffffff);
+      }
+      this._removeMoon();
+    } else if (mode === 'night') {
+      this._scene.background = new THREE.Color(0x0a0a23); // Dark blue
+      this._scene.fog.color.set(0x0a0a23);
+      this._sun.intensity = 0.15;
+      this._sun.color.set(0xaaaaff);
+      if (this._skyUniforms) {
+        this._skyUniforms.topColor.value.set(0x0a0a23);
+        this._skyUniforms.bottomColor.value.set(0x222244);
+      }
+      this._addMoon();
+    }
+  }
+
+}
 
 let _APP = null;
 
