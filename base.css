@@ -119,7 +119,7 @@ body {
 
 .health-bar {
   background: greenyellow;
-  width: 100px !important;
+  width: 100px ;
   height: 20px;       
   position: relative;
   top: 108px;         

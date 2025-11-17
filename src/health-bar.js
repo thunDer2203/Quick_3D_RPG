@@ -62,7 +62,7 @@ class HealthBar extends entity.Component {
     this._bar.frustumCulled = false;
     this._bar.scale.set(1, 0.125, 1);
 
-    this._realHealth = 1.0;
+    this._realHealth = 1;
     this._animHealth = 1.0;
 
     this._params.parent.add(this._bar);

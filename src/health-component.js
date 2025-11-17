@@ -30,7 +30,7 @@ export const health_component = (() => {
       const bar = document.getElementById('health-bar');
 
       const healthAsPercentage = this._health / this._maxHealth;
-      bar.style.width = Math.floor(200 * healthAsPercentage) + 'px';
+      bar.style.width = Math.floor(100 * healthAsPercentage) + 'px';
 
       document.getElementById('stats-strength').innerText = this._params.strength;
       document.getElementById('stats-wisdomness').innerText = this._params.wisdomness;
