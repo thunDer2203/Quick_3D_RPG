@@ -135,15 +135,21 @@ export const player_state = (() => {
     }
   
     Update(timeElapsed, input) {
-      if (input._keys.forward || input._keys.backward) {
-        if (input._keys.shift) {
-          this._parent.SetState('run');
-        }
-        return;
-      }
-  
-      this._parent.SetState('idle');
+  if (input._keys.mouse0 || input._keys.space) {
+    this._parent.SetState('attack');
+    return;
+  }
+
+  if (input._keys.forward || input._keys.backward) {
+    if (input._keys.shift) {
+      this._parent.SetState('run');
     }
+    return;
+  }
+
+  this._parent.SetState('idle');
+}
+
   };
   
   
@@ -183,53 +189,61 @@ export const player_state = (() => {
     }
   
     Update(timeElapsed, input) {
-      if (input._keys.forward || input._keys.backward) {
-        if (!input._keys.shift) {
-          this._parent.SetState('walk');
-        }
-        return;
-      }
-  
-      this._parent.SetState('idle');
+  if (input._keys.mouse0 || input._keys.space) {
+    this._parent.SetState('attack');
+    return;
+  }
+
+  if (input._keys.forward || input._keys.backward) {
+    if (!input._keys.shift) {
+      this._parent.SetState('walk');
     }
+    return;
+  }
+
+  this._parent.SetState('idle');
+}
+
   };
   
   
   class IdleState extends State {
-    constructor(parent) {
-      super(parent);
+  constructor(parent) {
+    super(parent);
+  }
+
+  get Name() {
+    return 'idle';
+  }
+
+  Enter(prevState) {
+    const idleAction = this._parent._proxy._animations['idle'].action;
+    if (prevState) {
+      const prevAction = this._parent._proxy._animations[prevState.Name].action;
+      idleAction.time = 0.0;
+      idleAction.enabled = true;
+      idleAction.setEffectiveTimeScale(1.0);
+      idleAction.setEffectiveWeight(1.0);
+      idleAction.crossFadeFrom(prevAction, 0.25, true);
+      idleAction.play();
+    } else {
+      idleAction.play();
     }
-  
-    get Name() {
-      return 'idle';
+  }
+
+  Exit() {}
+
+  Update(_, input) {
+    if (input._keys.forward || input._keys.backward) {
+      this._parent.SetState('walk');
+
+    // ✔ Attack on SPACE OR LEFT-CLICK  
+    } else if (input._keys.space || input._keys.mouse0) {
+      this._parent.SetState('attack');
     }
-  
-    Enter(prevState) {
-      const idleAction = this._parent._proxy._animations['idle'].action;
-      if (prevState) {
-        const prevAction = this._parent._proxy._animations[prevState.Name].action;
-        idleAction.time = 0.0;
-        idleAction.enabled = true;
-        idleAction.setEffectiveTimeScale(1.0);
-        idleAction.setEffectiveWeight(1.0);
-        idleAction.crossFadeFrom(prevAction, 0.25, true);
-        idleAction.play();
-      } else {
-        idleAction.play();
-      }
-    }
-  
-    Exit() {
-    }
-  
-    Update(_, input) {
-      if (input._keys.forward || input._keys.backward) {
-        this._parent.SetState('walk');
-      } else if (input._keys.space) {
-        this._parent.SetState('attack');
-      }
-    }
-  };
+  }
+}
+
 
   return {
     State: State,

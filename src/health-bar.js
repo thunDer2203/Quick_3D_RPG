@@ -60,7 +60,7 @@ class HealthBar extends entity.Component {
 
     this._bar = new THREE.Mesh(this._geometry, this._material);
     this._bar.frustumCulled = false;
-    this._bar.scale.set(2, 0.125, 1);
+    this._bar.scale.set(1, 0.125, 1);
 
     this._realHealth = 1.0;
     this._animHealth = 1.0;

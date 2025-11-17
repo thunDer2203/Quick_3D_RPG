@@ -2,7 +2,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.118.1/build/three.m
 
 import {third_person_camera} from './third-person-camera.js';
 import {entity_manager} from './entity-manager.js';
-import {player_entity} from './player-entity.js'
+import {player_entity} from './player-entity.js';
 import {entity} from './entity.js';
 import {gltf_component} from './gltf-component.js';
 import {health_component} from './health-component.js';
@@ -44,6 +44,61 @@ void main() {
   gl_FragColor = vec4( mix( bottomColor, topColor, max( pow( max( h , 0.0), exponent ), 0.0 ) ), 1.0 );
 }`;
 
+// ----------------- thin grass shaders (item 1) -----------------
+const grassVertex = `
+uniform float time;
+varying float vY;
+varying vec2 vUv;
+
+void main() {
+  vUv = uv;
+  vY = position.y;
+
+  // world translation of this mesh (used to offset wind for each grass patch)
+  vec3 worldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+
+  // compute a wind-based sway using time + mesh world position
+  float wind = sin(time * 2.0 + worldPos.x * 0.02 + worldPos.z * 0.02);
+
+  // amplitude scaled by vertex height (top of blade moves more)
+  float amplitude = 0.15; // max horizontal offset
+  float sway = wind * amplitude * (position.y / 3.0); // height normalizer (blade height = 3)
+
+  // apply sway as a small X-offset (local space)
+  vec3 pos = position;
+  pos.x += sway;
+
+  // optionally add a tiny twist using UV or Y
+  float twist = sin(time * 1.8 + worldPos.z * 0.01) * 0.02 * (position.y / 3.0);
+  pos.z += twist;
+
+  // standard transform
+  vec4 mvPosition = modelViewMatrix * vec4(pos, 1.0);
+  gl_Position = projectionMatrix * mvPosition;
+}
+`;
+
+const grassFragment = `
+varying float vY;
+varying vec2 vUv;
+
+void main() {
+  // simple vertical color gradient (darker at base, lighter at tip)
+  vec3 base = vec3(0.12, 0.35, 0.08);   // dark green
+  vec3 tip  = vec3(0.55, 0.85, 0.45);   // light green
+
+  float t = smoothstep(0.0, 3.0, vY);  // blade height is ~3.0
+  vec3 color = mix(base, tip, t);
+
+  // slight vignette on edges using UV to help alpha feel natural (no texture here)
+  float alpha = 1.0;
+  float edge = smoothstep(0.0, 0.45, abs(vUv.x - 0.5));
+  alpha *= 1.0 - edge * 0.9;
+
+  gl_FragColor = vec4(color, alpha);
+}
+`;
+// -------------------------------------------------------
 
 class HackNSlashDemo {
   constructor() {
@@ -69,42 +124,73 @@ class HackNSlashDemo {
     }, false);
 
     const fov = 60;
-    const aspect = 1920 / 1080;
+    const aspect = window.innerWidth / window.innerHeight;
     const near = 1.0;
     const far = 10000.0;
     this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     this._camera.position.set(25, 10, 25);
 
     this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(0xF5A927);
-    this._scene.fog = new THREE.FogExp2(0xF5A927);
+    // warmer fog and blend with ground
+    this._scene.background = new THREE.Color(0xCDE8FF);
+    this._scene.fog = new THREE.FogExp2(0xC9EACD, 0.0011);
 
-    let light = new THREE.DirectionalLight(0xE66000, 2.0);
-    light.position.set(-10, 500, 10);
+    // --- lighting: warm sun + hemisphere ambient ---
+    let light = new THREE.DirectionalLight(0xfff1d6, 0.95);
+    light.position.set(-40, 120, 60);
     light.target.position.set(0, 0, 0);
-    // light.castShadow = true;
-    light.shadow.bias = -0.001;
-    light.shadow.mapSize.width = 4096;
-    light.shadow.mapSize.height = 4096;
+    light.castShadow = true;
+    light.shadow.bias = -0.0004;
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
     light.shadow.camera.near = 0.1;
     light.shadow.camera.far = 1000.0;
-    light.shadow.camera.left = 100;
-    light.shadow.camera.right = -100;
-    light.shadow.camera.top = 100;
-    light.shadow.camera.bottom = -100;
+    light.shadow.camera.left = 200;
+    light.shadow.camera.right = -200;
+    light.shadow.camera.top = 200;
+    light.shadow.camera.bottom = -200;
     this._scene.add(light);
-
     this._sun = light;
 
-    const plane = new THREE.Mesh(
-        new THREE.PlaneGeometry(5000, 5000, 10, 10),
-        new THREE.MeshStandardMaterial({
-            color: 0x1e601c,
-          }));
+    const hemi = new THREE.HemisphereLight(0xfff6e0, 0x445566, 0.45);
+    this._scene.add(hemi);
+
+    // --- Ground: try to use tiled texture, fallback to color ---
+    const planeGeo = new THREE.PlaneGeometry(5000, 5000, 10, 10);
+    // default material (in case texture not found)
+    let planeMat = new THREE.MeshStandardMaterial({ color: 0x1e601c, roughness: 1.0, metalness: 0.0 });
+
+    // try load ground texture
+    try {
+      const groundLoader = new THREE.TextureLoader();
+      groundLoader.load(
+       './resources/icons/weapons/S.jpeg',
+        (tex) => {
+          tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+          tex.repeat.set(80, 80);
+          tex.encoding = THREE.sRGBEncoding;
+          planeMat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1.0, metalness: 0.0 });
+          // replace plane's material if plane exists
+          if (this._groundMesh) {
+            this._groundMesh.material = planeMat;
+          }
+        },
+        undefined,
+        (err) => {
+          // failure - leave default material
+          console.log('[ground] ground texture not found, using flat color.');
+        }
+      );
+    } catch (e) {
+      console.warn('[ground] texture loader error', e);
+    }
+
+    const plane = new THREE.Mesh(planeGeo, planeMat);
     plane.castShadow = false;
     plane.receiveShadow = true;
     plane.rotation.x = -Math.PI / 2;
     this._scene.add(plane);
+    this._groundMesh = plane;
 
     this._entityManager = new entity_manager.EntityManager();
     this._grid = new spatial_hash_grid.SpatialHashGrid(
@@ -115,6 +201,18 @@ class HackNSlashDemo {
     this._LoadFoliage();
     this._LoadClouds();
     this._LoadSky();
+
+    // ----- GRASS support variables and settings -----
+    // NOTE: the thin shader-driven grass below does NOT use an image file
+    this._grassCount = 2500;   // (unused for the thin-mesh approach; kept for compatibility)
+    this._grassArea = 600;     // spread (square) - not directly used by thin-mesh approach
+    this._totalTime = 0;
+    this._grassMeshes = null;
+    this._grassOffsets = null;
+    this._grassDummy = null;
+
+    // create grass (after plane and sky/foliage so it sits on ground)
+    // this._LoadGrass();
 
     this._previousRAF = null;
     this._RAF();
@@ -127,9 +225,9 @@ class HackNSlashDemo {
   }
 
   _LoadSky() {
-    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFF, 0.6);
+    const hemiLight = new THREE.HemisphereLight(0xFFFFFF, 0xFFFFFFF, 0.6);
     hemiLight.color.setHSL(0.6, 1, 0.6);
-    hemiLight.groundColor.setHSL(0.01, 0, 0.5);
+    hemiLight.groundColor.setHSL(0.095, 1, 0.75);
     this._scene.add(hemiLight);
 
     const uniforms = {
@@ -154,39 +252,37 @@ class HackNSlashDemo {
     this._scene.add(sky);
   }
 
-  
- _LoadClouds() {
-  for (let i = 0; i < 20; ++i) {
-    const index = math.rand_int(1, 3);
-    const pos = new THREE.Vector3(
-      (Math.random() * 2.0 - 1.0) * 500,
-      80 + Math.random() * 40,
-      (Math.random() * 2.0 - 1.0) * 500
-    );
+  _LoadClouds() {
+    for (let i = 0; i < 20; ++i) {
+      const index = math.rand_int(1, 3);
+      const pos = new THREE.Vector3(
+        (Math.random() * 2.0 - 1.0) * 500,
+        100,
+        (Math.random() * 2.0 - 1.0) * 500
+      );
 
-    const e = new entity.Entity();
-    e.AddComponent(new gltf_component.StaticModelComponent({
-      scene: this._scene,
-      resourcePath: './resources/nature2/GLTF/',
-      resourceName: 'Cloud' + index + '.glb',
-      position: pos,
-      scale: Math.random() * 10 + 5,
-      rotation: new THREE.Euler(0, Math.random() * Math.PI * 2, 0),
-      emissive: new THREE.Color(0xFFFFFF)
-    }));
-
-    e.SetPosition(pos);
-    this._entityManager.Add(e);
+      const e = new entity.Entity();
+      e.AddComponent(new gltf_component.StaticModelComponent({
+        scene: this._scene,
+        resourcePath: './resources/nature2/GLTF/',
+        resourceName: 'Cloud' + index + '.glb',
+        position: pos,
+        scale: Math.random() * 5 + 10,
+        emissive: new THREE.Color(0x808080),
+      }));
+      e.SetPosition(pos);
+      this._entityManager.Add(e);
+      e.SetActive(false);
+    }
   }
-}
 
   _LoadFoliage() {
     for (let i = 0; i < 100; ++i) {
       const names = [
-          'CommonTree_Dead', 'CommonTree',
+          // 'CommonTree_Dead', 'CommonTree',
           'BirchTree', 'BirchTree_Dead',
           'Willow', 'Willow_Dead',
-          'PineTree',
+          // 'PineTree',
       ];
       const name = names[math.rand_int(0, names.length - 1)];
       const index = math.rand_int(1, 5);
@@ -234,7 +330,7 @@ class HackNSlashDemo {
         damage: 3,
         renderParams: {
           name: 'Axe',
-          scale: 0.5,
+          scale: 0.25,
           icon: 'war-axe-64.png',
         },
     }));
@@ -246,7 +342,7 @@ class HackNSlashDemo {
         damage: 3,
         renderParams: {
           name: 'Sword',
-          scale: 0.5,
+          scale: 0.25,
           icon: 'pointy-sword-64.png',
         },
     }));
@@ -278,14 +374,14 @@ class HackNSlashDemo {
     player.AddComponent(new inventory_controller.InventoryController(params));
     player.AddComponent(new health_component.HealthComponent({
         updateUI: true,
-        health: 500,
-        maxHealth: 500,
+        health: 100,
+        maxHealth: 100,
         strength: 50,
-        wisdomness: 50,
+        wisdomness: 5,
         benchpress: 20,
         curl: 100,
         experience: 0,
-        level: 100,
+        level: 1,
     }));
     player.AddComponent(
         new spatial_grid_controller.SpatialGridController({grid: this._grid}));
@@ -381,6 +477,83 @@ class HackNSlashDemo {
     }
   }
 
+  // ----- REPLACED: thin shader-driven grass (item 2) -----
+  _LoadGrass() {
+    // simple shader-based thin grass (many individual meshes)
+    const grassMaterial = new THREE.ShaderMaterial({
+      uniforms: { time: { value: 0 } },
+      vertexShader: grassVertex,
+      fragmentShader: grassFragment,
+      side: THREE.DoubleSide,
+      transparent: true,
+      depthWrite: false,
+    });
+
+    // SUPER THIN + SHORT GRASS
+    // width = 0.3 (very thin), height = 3 (short)
+    const grassGeometry = new THREE.PlaneGeometry(0.3, 3);
+    grassGeometry.translate(0, 1.5, 0); // bottom touches ground
+
+    const COUNT = 12000; // dense grass field
+    for (let i = 0; i < COUNT; ++i) {
+      const pos = new THREE.Vector3(
+        (Math.random() * 2 - 1) * 500,
+        0.001,
+        (Math.random() * 2 - 1) * 500
+      );
+
+      const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+      grass.position.copy(pos);
+
+      // random orientation so it looks natural
+      grass.rotation.y = Math.random() * Math.PI * 2;
+
+      // tiny random variation
+      const scale = 0.8 + Math.random() * 0.4;
+      grass.scale.set(scale, scale, scale);
+
+      // small random tilt so blades aren't perfectly vertical
+      grass.rotation.z = (Math.random() - 0.5) * 0.12;
+      grass.rotation.x = (Math.random() - 0.5) * 0.08;
+
+      this._scene.add(grass);
+    }
+
+    this._grassMaterial = grassMaterial;
+  }
+
+  // (kept for compatibility — not called now)
+  _UpdateGrass(dt) {
+    if (!this._grassMeshes || !this._grassOffsets) return;
+    const meshes = this._grassMeshes; // array of three instanced meshes
+    const dummy = this._grassDummy;
+    const count = this._grassOffsets.length;
+    for (let i = 0; i < count; i++) {
+      meshes[0].getMatrixAt(i, dummy.matrix);
+      dummy.matrix.decompose(dummy.position, dummy.quaternion, dummy.scale);
+
+      const off = this._grassOffsets[i];
+      const sway = Math.sin(this._totalTime * off.speed + off.phase) * off.amplitude * 1.1;
+
+      const origY = dummy.rotation ? dummy.rotation.y : 0;
+      dummy.rotation.set(sway, origY, sway * 0.25);
+      dummy.updateMatrix();
+      meshes[0].setMatrixAt(i, dummy.matrix);
+
+      dummy.rotation.set(sway, origY + Math.PI * 2 / 3, sway * 0.25);
+      dummy.updateMatrix();
+      meshes[1].setMatrixAt(i, dummy.matrix);
+
+      dummy.rotation.set(sway, origY - Math.PI * 2 / 3, sway * 0.25);
+      dummy.updateMatrix();
+      meshes[2].setMatrixAt(i, dummy.matrix);
+    }
+
+    for (const m of meshes) {
+      if (m.instanceMatrix) m.instanceMatrix.needsUpdate = true;
+    }
+  }
+
   _OnWindowResize() {
     this._camera.aspect = window.innerWidth / window.innerHeight;
     this._camera.updateProjectionMatrix();
@@ -416,6 +589,17 @@ class HackNSlashDemo {
     const timeElapsedS = Math.min(1.0 / 30.0, timeElapsed * 0.001);
 
     this._UpdateSun();
+
+    // accumulate time for grass animation (only here)
+    this._totalTime += timeElapsedS;
+
+    // update shader-driven grass if present (item 2)
+    if (this._grassMaterial) {
+      this._grassMaterial.uniforms.time.value += timeElapsedS;
+    }
+
+    // if you had CPU-based instance updates, they are not used now.
+    // this._UpdateGrass(timeElapsedS);
 
     this._entityManager.Update(timeElapsedS);
   }

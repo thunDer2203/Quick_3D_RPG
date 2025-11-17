@@ -34,7 +34,24 @@ export const player_input = (() => {
       document.addEventListener('keydown', (e) => this._onKeyDown(e), false);
       document.addEventListener('keyup', (e) => this._onKeyUp(e), false);
       document.addEventListener('mouseup', (e) => this._onMouseUp(e), false);
+      this._keys.mouse0 = false;
+      document.addEventListener('mousedown', (e) => this._onMouseDown(e), false);
+      document.addEventListener('mouseup', (e) => this._onMouseUpMouse(e), false);
     }
+
+_onMouseDown(event) {
+  if (event.button === 0) {   // LEFT CLICK
+    this._keys.mouse0 = true;
+  }
+}
+
+_onMouseUpMouse(event) {
+  if (event.button === 0) {
+    this._keys.mouse0 = false;
+  }
+}
+
+
   
     _onMouseUp(event) {
       const rect = document.getElementById('threejs').getBoundingClientRect();
