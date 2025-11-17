@@ -129,7 +129,24 @@ class HackNSlashDemo {
     const far = 10000.0;
     this._camera = new THREE.PerspectiveCamera(fov, aspect, near, far);
     this._camera.position.set(25, 10, 25);
-
+    const listener = new THREE.AudioListener();
+this._camera.add(listener);
+//sound
+const sound = new THREE.Audio(listener);
+const audioLoader = new THREE.AudioLoader();
+audioLoader.load('./resources/sounds/retro_ringtone.mp3',
+  (buffer) => {
+    sound.setBuffer(buffer);
+    sound.setLoop(true);
+    sound.setVolume(0.5);
+    // Try to play — may still be blocked until user gesture
+    try { sound.play(); } catch (e) { /* will resume on gesture */ }
+  },
+  undefined,
+  (err) => {
+    console.error('[audio] load error:', err);
+  }
+);
     this._scene = new THREE.Scene();
     // warmer fog and blend with ground
     this._scene.background = new THREE.Color(0xCDE8FF);
