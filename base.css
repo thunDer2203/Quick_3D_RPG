@@ -153,6 +153,69 @@ body {
   top: -5px;
   right: 105%;
 }
+/* === Game UI Buttons === */
+/* === Fantasy RPG Style Buttons === */
+.env-controls button {
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.6px;
+  color: #f0f4ff;
+  background: linear-gradient(180deg, #1a1f2b 0%, #0d111a 100%);
+  border: 2px solid rgba(120, 170, 255, 0.4);
+  border-radius: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  box-shadow: 0 0 10px rgba(100, 160, 255, 0.2),
+              inset 0 0 8px rgba(120, 180, 255, 0.05);
+  backdrop-filter: blur(2px);
+  text-shadow: 0 0 6px rgba(0, 100, 255, 0.4);
+  outline: none;
+}
+
+.env-controls button:hover {
+  background: linear-gradient(180deg, #263148 0%, #111722 100%);
+  color: #ffffff;
+  border-color: #6ea8ff;
+  box-shadow: 0 0 14px rgba(110, 168, 255, 0.7),
+              0 0 25px rgba(60, 120, 255, 0.3);
+  transform: translateY(-2px) scale(1.05);
+}
+
+.env-controls button:active {
+  transform: translateY(0px) scale(0.96);
+  box-shadow: inset 0 0 8px rgba(110, 168, 255, 0.5);
+}
+
+/* 🌅 Morning button - warm sunrise theme */
+#btn-morning {
+  border-color: #ffcc66;
+  background: linear-gradient(180deg, #4a3b1f 0%, #2b210e 100%);
+  box-shadow: 0 0 10px rgba(255, 200, 100, 0.2);
+}
+
+#btn-morning:hover {
+  border-color: #ffd580;
+  color: #fff8e1;
+  background: linear-gradient(180deg, #6e4d20 0%, #3b2c14 100%);
+  box-shadow: 0 0 15px rgba(255, 210, 130, 0.6);
+}
+
+/* 🌌 Night button - cool moonlight theme */
+#btn-night {
+  border-color: #7fb6ff;
+  background: linear-gradient(180deg, #1c2333 0%, #0c111c 100%);
+  box-shadow: 0 0 10px rgba(120, 160, 255, 0.25);
+}
+
+#btn-night:hover {
+  border-color: #9bc8ff;
+  color: #e0f2ff;
+  background: linear-gradient(180deg, #243250 0%, #0d1524 100%);
+  box-shadow: 0 0 18px rgba(150, 200, 255, 0.6);
+}
+
 
 .stats-tooltip:hover .stats-tooltiptext {
   visibility: visible;
